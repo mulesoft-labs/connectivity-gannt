@@ -3,6 +3,9 @@
 // All of the Node.js APIs are available in this process.
 
 
+var gantt_list = null; //real kiwi example https://github.com/jpestalardo/kiwi/blob/master/bin/resources/kiwi_gantt_example.json
+
+
 var tasksList = [
     {"name": "A", "from": 10, "len" : 30, "res" : "R1", "type" : "T1"},
     {"name": "B", "from": 25, "len" : 40, "res" : "R2", "type" : "T1"},
@@ -13,9 +16,94 @@ var tasksList = [
     {"name": "G", "from": 20, "len" : 60, "res" : "R2", "type" : "T4"}
 ];
 
+var token = null;
+
 $(function() {
-    showTasks(tasksList, $("#resources"));
+    showTasks(transform_gantt_to_task_list(gantt_list),  $("#resources"));
+    //showTasks(tasksList,  $("#resources"));
 });    
+
+function transform_date(date_) {
+    if (date_)
+    { 
+        var date_parts = date_.split("-");
+        year =parseInt(date_parts[0]); 
+        month = parseInt(date_parts[1])-1; 
+        day = parseInt(date_parts[2]);
+        var date = new Date(year,month, day);
+        return date;
+    }
+    return date_;
+}
+
+function date_to_num(date_){
+    var now = new Date();
+    if (now >= date_) {
+        return 0;
+    } else {
+        return Math.round((date_ - now)/1000/3600/24);
+    }
+}
+
+function get_from(date_) {
+    var now = new Date();
+    if (!date_){
+        return 0;
+    }
+    return date_to_num(date_);
+}
+
+function get_to_date(date_) {
+    if (!date_) {
+        return 115;
+    }
+    return date_to_num(date_);
+}
+
+function login(callback) {
+    var user; 
+    $.get('config.json', function(data) {
+        user = data.kiwi_authentication;
+    });
+    
+    $.post("https://ec2-54-163-68-108.compute-1.amazonaws.com/login-api",user, 
+        function( data ) {
+            token = data.response.user.authentication_token;
+            callback();
+        },
+    "json");
+}
+
+function get_gannt_data() {
+    $.get("https://ec2-54-163-68-108.compute-1.amazonaws.com/gantt", {'Authentication-Token': token}, function(data){
+            tasksList =  transform_gantt_to_task_list(data);
+            showTasks(tasksList, $("#resources"));
+        },"json");
+}
+
+function show_gantt() {
+    if (!token) {
+        login(get_gannt_data);
+    } else {
+        get_gannt_data();
+    }
+}
+
+function transform_gantt_to_task_list(gantt) {
+
+    res = [];
+    for (index in gantt) {
+        r = {};
+        row = gantt[index];
+        r["from"] = get_from(transform_date(row.from_date));
+        r["len"] = get_to_date(transform_date(row.to_date)) - r["from"];
+        r["name"] = row.project_name + " - " +row.name  ;
+        r["res"] = row.group;
+        r["type"] = row.task_type;
+        res.push(r);
+    }
+    return res;
+}
 
 function showTasks(tasks, canvas) {
     var vMargin = 5;
@@ -90,9 +178,9 @@ function positionString(top, left, width, height) {
 
 function getTaskColor(taskType) {
     switch(taskType) {
-        case "T1": return "teal";
-        case "T2": return "olive";
-        case "T3": return "aqua";
-        case "T4": return "purple";
+        case "mule-4-versions": return "aqua";
+        case "first-versions": return "olive";
+        case "T3": return "teal";
+        case "sustaining-versions": return "purple";
     }
 }
