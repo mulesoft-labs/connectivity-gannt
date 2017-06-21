@@ -19,8 +19,8 @@ var tasksList = [
 var token = null;
 
 $(function() {
-    showTasks(transform_gantt_to_task_list(gantt_list),  $("#resources"));
-    //showTasks(tasksList,  $("#resources"));
+    //showTasks(transform_gantt_to_task_list(gantt_list),  $("#resources"));
+    show_gantt();
 });    
 
 function transform_date(date_) {
@@ -64,18 +64,25 @@ function login(callback) {
     var user; 
     $.get('config.json', function(data) {
         user = data.kiwi_authentication;
-    });
+        $.ajax({
+            type: "POST",
+            url: "https://ec2-54-163-68-108.compute-1.amazonaws.com/login-api",
+            data:  JSON.stringify(user),
+            success: function( data_ ) {
+                token = data_.token;
+                callback();
+            },
+            contentType: "application/json",
+            dataType: 'json'
+        });
+    }, "json");
+
     
-    $.post("https://ec2-54-163-68-108.compute-1.amazonaws.com/login-api",user, 
-        function( data ) {
-            token = data.response.user.authentication_token;
-            callback();
-        },
-    "json");
+    
 }
 
 function get_gannt_data() {
-    $.get("https://ec2-54-163-68-108.compute-1.amazonaws.com/gantt", {'Authentication-Token': token}, function(data){
+    $.get("https://ec2-54-163-68-108.compute-1.amazonaws.com/gantt", {'Authorization': token}, function(data){
             tasksList =  transform_gantt_to_task_list(data);
             showTasks(tasksList, $("#resources"));
         },"json");
